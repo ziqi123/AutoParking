@@ -1,3 +1,14 @@
+# IDEs and editors
+.idea/
+.vscode/
+
+# Datasets
+Ps_locate_dataset/
+
+# Model checkpoints and logs
+checkpoints/
+logs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
