@@ -1,14 +1,10 @@
 import torch
 import torchvision.transforms as transforms
 import cv2
-import copy
-from PIL import Image
 import numpy as np
-from dataloader.heatmap_Dataloader import heatmap_Dataloader
-import matplotlib.pyplot as plt
-# from basic_cnn import BasicCNN
+from dataloader.heatmap_Dataloader_all import heatmap_Dataloader
 import os
-from hourglass import KFSGNet
+from hourglass_all import KFSGNet
 import torch.nn as nn
 import torchvision.transforms as transforms
 from heatmappy import Heatmapper
@@ -18,7 +14,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyper-parameters
-num_epochs = 100
+num_epochs = 150
 learning_rate = 0.0001
 
 transform = transforms.Compose([
@@ -29,8 +25,8 @@ params = dict()
 params['data_normalize_factor'] = 256
 params['dataset_dir'] = "./"
 params['rgb2gray'] = False
-params['dataset'] = "CNNDataset"
-params['train_batch_sz'] = 16
+params['dataset'] = "heatmap_dataset_all"
+params['train_batch_sz'] = 1
 params['val_batch_sz'] = 1
 params['sigma'] = 3
 
@@ -44,7 +40,7 @@ test_loader = dataloaders['val']
 
 model = KFSGNet()
 model.load_state_dict(torch.load(
-    '/media/home_bak/ziqi/park/Hourglass/39heatmap.ckpt'))
+    '/media/home_bak/ziqi/park/Hourglass_all/70heatmap3.ckpt'))
 
 # move model to the right device
 model.to(device)
@@ -65,6 +61,26 @@ curr_lr = learning_rate
 print("start")
 
 
+def get_acc(path, y, y_hat):
+    f = os.path.basename(path)
+    file = os.path.join(
+        "/media/home_bak/ziqi/park/Hourglass_all/train_img", f)
+    # save_img = os.path.join(
+    #     "/media/home_bak/ziqi/park/Hourglass_all/error_img", f)
+    # img = cv2.imread(file)
+    total = 0
+    for i in range(2):
+        total += ((y[i][0]-y_hat[2*i])**2 + (y[i][1]-y_hat[2*i+1])**2)**0.5
+    total /= 2
+    # if total > 10:
+    #     cv2.imwrite(save_img, img)
+
+    if total <= 5:
+        return 1
+    else:
+        return 0
+
+
 def colorize(outputs, gt, path, save_path):
     # outputs = outputs.cuda().data.cpu().numpy()
     gt = gt.cuda().data.cpu().numpy()
@@ -77,7 +93,7 @@ def colorize(outputs, gt, path, save_path):
     thickness = 4  # 可以为 0、4、8
 
     # print(outputs[0])
-    for i in range(2):
+    for i in range(4):
         cv2.circle(img, (int(points_list2[2*i]), int(points_list2[2*i+1])),
                    point_size, point_color2, thickness)
         cv2.circle(img, (outputs[i][0], outputs[i][1]),
@@ -108,13 +124,13 @@ def get_peak_points(heatmaps):
 
 
 loss_array = []
+accuracy = 0
 for i, (data, gt, mask, item, imgPath, heatmaps_targets) in enumerate(train_loader):
     data = data.to(device)
     gt = gt.to(device)
     mask = mask.to(device)
-    gt = gt.view(-1, 4)
+    gt = gt.view(-1, 8)
     heatmaps_targets = heatmaps_targets.to(device)
-
     # print(heatmaps_targets.shape)
 
     # Forward pass
@@ -123,26 +139,37 @@ for i, (data, gt, mask, item, imgPath, heatmaps_targets) in enumerate(train_load
     all_peak_points = get_peak_points(
         outputs.cpu().data.numpy())
 
+    # print(all_peak_points)
+
     for k in range(len(imgPath)):
         f = os.path.basename(imgPath[k])
         save_path2 = os.path.join(
-            "/media/home_bak/ziqi/park/Hourglass/train_img2", f)
-
+            "/media/home_bak/ziqi/park/Hourglass_all/train_img", f)
         colorize(all_peak_points[k], gt[k], imgPath[k], save_path2)
 
     # 热图
     gt = gt.cuda().data.cpu().numpy()
     gt = gt.tolist()
 
+    for s in range(len(imgPath)):
+        tmp = get_acc(imgPath[s], all_peak_points[s], gt[s])
+        accuracy += tmp
+
     for p in range(len(imgPath)):
         f = os.path.basename(imgPath[p])
         path_gt = os.path.join(
-            "/media/home_bak/ziqi/park/Hourglass/heatmap_gt", f)
+            "/media/home_bak/ziqi/park/Hourglass_all/heatmap_gt_train", f)
         # heatmapper = Heatmapper()
         point = []
-        point = [
-            (int(all_peak_points[p][0][0]), int(all_peak_points[p][0][1])),
-            (int(all_peak_points[p][1][0]), int(all_peak_points[p][1][1]))]
+        point = [(int(all_peak_points[p][0][0]),
+                  int(all_peak_points[p][0][1])),
+                 (int(all_peak_points[p][1][0]),
+                  int(all_peak_points[p][1][1])),
+                 (int(all_peak_points[p][2][0]),
+                  int(all_peak_points[p][2][1])),
+                 (int(all_peak_points[p][3][0]),
+                  int(all_peak_points[p][3][1])),
+                 ]
         heatmapper = Heatmapper(opacity=0.9, colours='reveal')
         # print(point)
         # example_img = Image.open(imgPath[p])
@@ -150,3 +177,5 @@ for i, (data, gt, mask, item, imgPath, heatmaps_targets) in enumerate(train_load
         # heatmap = heatmapper.heatmap_on_img(point, example_img)
         heatmap = heatmap.convert("RGB")
         heatmap.save(path_gt)
+
+print("accuracy", accuracy/len(train_loader))

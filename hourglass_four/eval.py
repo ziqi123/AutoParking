@@ -1,16 +1,14 @@
+import copy
 import torch
 import torchvision.transforms as transforms
 import cv2
 import numpy as np
-from dataloader.heatmap_Dataloader import heatmap_Dataloader
-# from basic_cnn import BasicCNN
+from dataloader.dataloader_four import heatmap_Dataloader
 import os
-from hourglass import KFSGNet
+from net_four import KFSGNet
 import matplotlib.pyplot as plt  # plt 用于显示图片
-import torch.nn as nn
 from heatmappy import Heatmapper
 import matplotlib
-import copy
 matplotlib.use('Agg')
 os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
@@ -18,7 +16,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyper-parameters
-num_epochs = 100
+num_epochs = 150
 learning_rate = 0.0001
 
 transform = transforms.Compose([
@@ -45,10 +43,10 @@ test_loader = dataloaders['val']
 model = KFSGNet()
 
 # move model to the right device
-model.to(device)
-model.load_state_dict(torch.load(
-    '/media/home_bak/ziqi/park/Hourglass/30heatmap3.ckpt'))
 
+model.load_state_dict(torch.load(
+    '/media/home_bak/ziqi/park/hourglass_four/150heatmap.ckpt'))
+model.to(device)
 
 # Loss and optimizer
 loss_fn = torch.nn.MSELoss()
@@ -67,9 +65,9 @@ print("start")
 def get_acc(path, y, y_hat, dis):
     f = os.path.basename(path)
     file = os.path.join(
-        "/media/home_bak/ziqi/park/Hourglass/test_img3", f)
+        "/media/home_bak/ziqi/park/hourglass_four/test_img", f)
     save_img = os.path.join(
-        "/media/home_bak/ziqi/park/Hourglass/error_img3", f)
+        "/media/home_bak/ziqi/park/hourglass_four/error_img", f)
     img = cv2.imread(file)
     total = 0
     for i in range(2):
@@ -84,7 +82,7 @@ def get_acc(path, y, y_hat, dis):
         return 0
 
 
-def colorize(outputs, gt, path, save_path, point_path, img_path, img_back_path, gt_back_path):
+def colorize(outputs, gt, path, save_path, point_path, img_path, img_back_path, gt_back_path, point_back_path):
     # outputs = outputs.cuda().data.cpu().numpy()
     gt = gt.cuda().data.cpu().numpy()
     img = cv2.imread(path)
@@ -96,7 +94,7 @@ def colorize(outputs, gt, path, save_path, point_path, img_path, img_back_path, 
     thickness = 4  # 可以为 0、4、8
 
     # print(outputs[0])
-    for i in range(2):
+    for i in range(4):
         cv2.circle(img, (int(points_list2[2*i]), int(points_list2[2*i+1])),
                    point_size, point_color2, thickness)
         cv2.circle(img, (outputs[i][0], outputs[i][1]),
@@ -108,6 +106,10 @@ def colorize(outputs, gt, path, save_path, point_path, img_path, img_back_path, 
     point[0][1] = point[0][1]+48
     point[1][0] = point[1][0]+240-96
     point[1][1] = point[1][1]+48
+    point[2][0] = point[2][0]+48
+    point[2][1] = point[2][1]+240-96
+    point[3][0] = point[3][0]+240-96
+    point[3][1] = point[3][1]+240-96
 
     img2 = cv2.imread(img_path)
     outputs1 = copy.deepcopy(outputs)
@@ -115,7 +117,12 @@ def colorize(outputs, gt, path, save_path, point_path, img_path, img_back_path, 
     outputs1[0][1] = outputs[0][1]+48
     outputs1[1][0] = outputs[1][0]+240-96
     outputs1[1][1] = outputs[1][1]+48
-    for j in range(2):
+    outputs1[2][0] = outputs[2][0]+48
+    outputs1[2][1] = outputs[2][1]+240-96
+    outputs1[3][0] = outputs[3][0]+240-96
+    outputs1[3][1] = outputs[3][1]+240-96
+
+    for j in range(4):
         cv2.circle(img2, (int(point[j][0]), int(point[j][1])),
                    point_size, point_color2, thickness)
         cv2.circle(img2, (outputs1[j][0], outputs1[j][1]),
@@ -125,11 +132,18 @@ def colorize(outputs, gt, path, save_path, point_path, img_path, img_back_path, 
     cv2.imwrite(img_back_path, img2)
 
     with open(point_path, "w") as f:
-        for k in range(2):
+        for k in range(4):
             f.write(str(outputs1[k][0]))
             f.write(' ')
             f.write(str(outputs1[k][1]))
             f.write('\n')
+
+    with open(point_back_path, "w") as ff:
+        for s in range(4):
+            ff.write(str(point[s][0]))
+            ff.write(' ')
+            ff.write(str(point[s][1]))
+            ff.write('\n')
 
 
 def get_peak_points(heatmaps):
@@ -158,7 +172,7 @@ for i, (data, gt, mask, item, imgPath, heatmaps_targets) in enumerate(test_loade
     data = data.to(device)
     gt = gt.to(device)
     mask = mask.to(device)
-    gt = gt.view(-1, 4)
+    gt = gt.view(-1, 8)
     heatmaps_targets = heatmaps_targets.to(device)
 
     # Forward pass
@@ -172,17 +186,19 @@ for i, (data, gt, mask, item, imgPath, heatmaps_targets) in enumerate(test_loade
     for k in range(len(imgPath)):
         f = os.path.basename(imgPath[k])
         save_path2 = os.path.join(
-            "/media/home_bak/ziqi/park/Hourglass/test_img3", f)
+            "/media/home_bak/ziqi/park/hourglass_four/test_img", f)
         point_path = os.path.join(
-            "/media/home_bak/ziqi/park/Hourglass/point3", f.strip('.jpg')+'.txt')
+            "/media/home_bak/ziqi/park/hourglass_four/point", f.strip('.jpg')+'.txt')
         img_path = os.path.join(
             "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/perspective_img", f)
         img_back_path = os.path.join(
-            "/media/home_bak/ziqi/park/Hourglass/test_img_back3", f)
+            "/media/home_bak/ziqi/park/hourglass_four/test_img_back", f)
         gt_back_path = os.path.join(
             "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/match_img_point", f.strip('.jpg')+'_OA.txt')
+        point_back_path = os.path.join(
+            "/media/home_bak/ziqi/park/hourglass_four/point_back", f.strip('.jpg')+'.txt')
         img_back_path = colorize(all_peak_points[k], gt[k], imgPath[k],
-                                 save_path2, point_path, img_path, img_back_path, gt_back_path)
+                                 save_path2, point_path, img_path, img_back_path, gt_back_path, point_back_path)
 
     # 计算精度
     for p in range(21):
@@ -196,13 +212,18 @@ for i, (data, gt, mask, item, imgPath, heatmaps_targets) in enumerate(test_loade
     for p in range(len(imgPath)):
         f = os.path.basename(imgPath[p])
         path_gt = os.path.join(
-            "/media/home_bak/ziqi/park/Hourglass/heatmap_gt3", f)
+            "/media/home_bak/ziqi/park/hourglass_four/heatmap_gt_test", f)
         # heatmapper = Heatmapper()
         point = []
         point = [(int(all_peak_points[p][0][0]),
                   int(all_peak_points[p][0][1])),
                  (int(all_peak_points[p][1][0]),
                  int(all_peak_points[p][1][1])),
+                 (int(all_peak_points[p][2][0]),
+                 int(all_peak_points[p][2][1])),
+                 (int(all_peak_points[p][3][0]),
+                 int(all_peak_points[p][3][1])),
+
                  ]
         heatmapper = Heatmapper(opacity=0.9, colours='reveal')
         # print(point)
@@ -234,4 +255,4 @@ plt.xlabel('pixel')
 # 纵坐标描述
 plt.ylabel('accuracy(%)')
 plt.show()
-plt.savefig("/media/home_bak/ziqi/park/Hourglass/accuracy3.png")
+plt.savefig("/media/home_bak/ziqi/park/hourglass_four/accuracy3.png")

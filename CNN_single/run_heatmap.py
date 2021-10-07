@@ -8,11 +8,11 @@ from dataloader.heatmap_Dataloader import heatmap_Dataloader
 import matplotlib.pyplot as plt
 # from basic_cnn import BasicCNN
 import os
-from hourglass import KFSGNet
+from hourglassa import KFSGNet
 import torch.nn as nn
 import torchvision.transforms as transforms
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -30,9 +30,9 @@ params['data_normalize_factor'] = 256
 params['dataset_dir'] = "./"
 params['rgb2gray'] = False
 params['dataset'] = "CNNDataset"
-params['train_batch_sz'] = 64
+params['train_batch_sz'] = 16
 params['val_batch_sz'] = 1
-params['sigma'] = 5
+params['sigma'] = 3
 
 dataloaders, dataset_sizes = heatmap_Dataloader(params)
 
@@ -92,8 +92,8 @@ def get_peak_points(heatmaps):
     :return:numpy array (N,15,2)
     """
     N, C, H, W = heatmaps.shape
-    print("N")
-    print("C")
+    # print("N")
+    # print("C")
     all_peak_points = []
     for i in range(N):
         peak_points = []
@@ -137,14 +137,14 @@ for epoch in range(num_epochs):
         for k in range(len(imgPath)):
             f = os.path.basename(imgPath[k])
             save_path2 = os.path.join(
-                "/media/home_bak/ziqi/park/CNN_single/train_img3", f)
+                "/media/home_bak/ziqi/park/CNN_single/train_img4", f)
             colorize(all_peak_points[k], gt[k], imgPath[k], save_path2)
 
         # print("all_peak_points", all_peak_points)
 
-    if i % 10 == 0:
-        print("Epoch [{}/{}], Step [{}/{}] Loss: {:.4f}, average_loss: {:.4f}, learning_rate: {}".format(
-            epoch + 1, num_epochs, i + 1, total_step, loss.item(), tmp / (i+1), optimizer.state_dict()['param_groups'][0]['lr']))
+        if i % 10 == 0:
+            print("Epoch [{}/{}], Step [{}/{}] Loss: {:.4f}, average_loss: {:.4f}, learning_rate: {}".format(
+                epoch + 1, num_epochs, i + 1, total_step, loss.item(), tmp / (i+1), optimizer.state_dict()['param_groups'][0]['lr']))
 
     loss_array.append(tmp)
     if (epoch + 1) % 10 == 0:

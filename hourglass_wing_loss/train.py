@@ -1,25 +1,18 @@
 import torch
 import torchvision.transforms as transforms
-import cv2
-import copy
-from PIL import Image
-import numpy as np
-from dataloader.heatmap_Dataloader import heatmap_Dataloader
-import matplotlib.pyplot as plt
-# from basic_cnn import BasicCNN
+from dataloader.dataloader_wing import heatmap_Dataloader
 import os
-from hourglass import KFSGNet
-import torch.nn as nn
+from net_wing import KFSGNet
 import torchvision.transforms as transforms
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+import math
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyper-parameters
-num_epochs = 200
-learning_rate = 0.0001
+num_epochs = 300
+learning_rate = 0.001
 
 transform = transforms.Compose([
     transforms.ToTensor()])
@@ -29,7 +22,7 @@ params = dict()
 params['data_normalize_factor'] = 256
 params['dataset_dir'] = "./"
 params['rgb2gray'] = False
-params['dataset'] = "CNNDataset"
+params['dataset'] = "heatmap_dataset_all"
 params['train_batch_sz'] = 16
 params['val_batch_sz'] = 1
 params['sigma'] = 3
@@ -40,7 +33,6 @@ train_loader = dataloaders['train']
 test_loader = dataloaders['val']
 
 # Define your model
-# model = BasicCNN()
 
 model = KFSGNet()
 
@@ -49,10 +41,33 @@ model.to(device)
 
 model.train()
 
+
+def wing_loss(y_true, y_pred, w, epsilon, N_LANDMARK):
+    y_pred = y_pred.reshape(-1, N_LANDMARK, 2)
+    y_true = y_true.reshape(-1, N_LANDMARK, 2)
+
+    x = y_true - y_pred
+    c = w * (1.0 - math.log(1.0 + w / epsilon))
+    absolute_x = torch.abs(x)
+    losses = torch.where(w > absolute_x,
+                         w * torch.log(1.0 + absolute_x / epsilon),
+                         absolute_x - c)
+    loss = torch.mean(torch.sum(losses, axis=[1, 2]), axis=0).requires_grad_()
+    return loss
+
+
 # Loss and optimizer
-loss_fn = torch.nn.MSELoss()
+# loss_fn = torch.nn.MSELoss()
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+# 多步长学习率衰减
+# 不同的区间采用不同的更新频率，或者是有的区间更新学习率，有的区间不更新学习率
+# 其中milestones参数为表示学习率更新的起止区间，在区间[0. 200]内学习率不更新，
+# 而在[200, 300]、[300, 320].....[340, 400]的右侧值都进行一次更新；
+# gamma参数表示学习率衰减为上次的gamma分之一
+# torch.optim.lr_scheduler.MultiStepLR(optimizer,
+#                                      milestones=[40, 50, 60, 70, 80, 90, 100], gamma=0.5)
+
 print(optimizer.state_dict()['param_groups'][0]['lr'])
 
 # For updating learning rate
@@ -62,48 +77,6 @@ total_step = len(train_loader)
 curr_lr = learning_rate
 
 print("start")
-
-
-def colorize(outputs, gt, path, save_path):
-    # outputs = outputs.cuda().data.cpu().numpy()
-    gt = gt.cuda().data.cpu().numpy()
-    img = cv2.imread(path)
-
-    points_list2 = np.array(gt, dtype=np.float)
-    point_size = 1
-    point_color = (0, 0, 255)
-    point_color2 = (0, 255, 0)
-    thickness = 4  # 可以为 0、4、8
-
-    # print(outputs[0])
-    for i in range(2):
-        cv2.circle(img, (int(points_list2[2*i]), int(points_list2[2*i+1])),
-                   point_size, point_color2, thickness)
-        cv2.circle(img, (outputs[i][0], outputs[i][1]),
-                   point_size, point_color, thickness)
-
-    # print(save_path)
-    cv2.imwrite(save_path, img)
-
-
-def get_peak_points(heatmaps):
-    """
-
-    :param heatmaps: numpy array (N,15,96,96)
-    :return:numpy array (N,15,2)
-    """
-    N, C, H, W = heatmaps.shape
-    all_peak_points = []
-    for i in range(N):
-        peak_points = []
-        for j in range(C):
-            yy, xx = np.where(heatmaps[i, j] == heatmaps[i, j].max())
-            y = yy[0]
-            x = xx[0]
-            peak_points.append([x, y])
-        all_peak_points.append(peak_points)
-    all_peak_points = np.array(all_peak_points)
-    return all_peak_points
 
 
 def calculate_mask(heatmaps_target):
@@ -130,10 +103,11 @@ def calculate_mask(heatmaps_target):
 for epoch in range(num_epochs):
     tmp = 0
     for i, (data, gt, mask, item, imgPath, heatmaps_targets) in enumerate(train_loader):
+        # print(i)
         data = data.to(device)
         gt = gt.to(device)
         mask = mask.to(device)
-        gt = gt.view(-1, 4)
+        gt = gt.view(-1, 8)
         heatmaps_targets = heatmaps_targets.to(device)
         mask, indices_valid = calculate_mask(heatmaps_targets)
 
@@ -144,7 +118,9 @@ for epoch in range(num_epochs):
         outputs = outputs * mask
         heatmaps_targets = heatmaps_targets * mask
 
-        loss = loss_fn(outputs, heatmaps_targets)
+        # loss = loss_fn(outputs, heatmaps_targets)
+        loss = wing_loss(heatmaps_targets, outputs,
+                         w=10.0, epsilon=2.0, N_LANDMARK=192)
 
         tmp += loss.item()
         # exit()
@@ -154,11 +130,12 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
 
-        # print("all_peak_points", all_peak_points)
-
         if i % 10 == 0:
             print("Epoch [{}/{}], Step [{}/{}] Loss: {:.4f}, average_loss: {:.4f}, learning_rate: {}".format(
                 epoch + 1, num_epochs, i + 1, total_step, loss.item(), tmp / (i+1), optimizer.state_dict()['param_groups'][0]['lr']))
 
     if (epoch + 1) % 10 == 0:
-        torch.save(model.state_dict(), '{}heatmap4.ckpt'.format(epoch + 1))
+        torch.save(model.state_dict(), '{}heatmap2.ckpt'.format(epoch + 1))
+
+
+# card2 heatmap2 37406

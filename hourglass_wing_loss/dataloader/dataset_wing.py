@@ -9,12 +9,8 @@ import torchvision
 import matplotlib.pyplot as plt
 import random
 import cv2
-from torchvision import transforms
+
 np.seterr(divide='ignore', invalid='ignore')
-
-
-def takeSecond(elem):
-    return elem[0]**2+elem[1]**2
 
 
 class heatmap_dataset(Dataset):
@@ -35,7 +31,7 @@ class heatmap_dataset(Dataset):
         if setname == 'train':
             data = []
             gt = []
-            train_list = '/media/home_bak/ziqi/park/Hourglass/dataset/train.txt'
+            train_list = '/media/home_bak/ziqi/park/hourglass_wing_loss/dataset/train.txt'
             f = open(train_list)
             for line in f:
                 line_data = line.strip('\n')
@@ -49,7 +45,7 @@ class heatmap_dataset(Dataset):
         if setname == 'val':
             data = []
             gt = []
-            test_list = '/media/home_bak/ziqi/park/Hourglass/dataset/val.txt'
+            test_list = '/media/home_bak/ziqi/park/hourglass_wing_loss/dataset/val.txt'
             f = open(test_list)
             for line in f:
                 line_data = line.strip('\n')
@@ -154,13 +150,12 @@ class heatmap_dataset(Dataset):
         data = cv2.imread(str(self.data[item]))
         imgPath = str(self.data[item])
 
-        gt = [[0, 0], [0, 0]]
+        gt = [[0, 0], [0, 0], [0, 0], [0, 0]]
 
         # gt = np.loadtxt(str(self.data[item]))
         with open(str(self.gt[item]), "r") as f:
             lines = f.readlines()  # 把全部数据文件读到一个列表lines中
 
-        gt_all = [[0, 0], [0, 0], [0, 0], [0, 0]]
         # 表示矩阵的行，从0行开始
         row = 0
         # 把lines中的数据逐行读取出来
@@ -172,34 +167,31 @@ class heatmap_dataset(Dataset):
             # print("point:", list[0], list[1])
             # 然后方阵A的下一行接着读
             row = row + 1
-            if row == 2:
-                break
-
-        row_all = 0
-        # 把lines中的数据逐行读取出来
-        for line_all in lines:
-            # 处理逐行数据：strip表示把头尾的'\n'去掉，split表示以空格来分割行数据，然后把处理后的行数据返回到list列表中
-            list = line_all.strip('\n').split(' ')
-            gt_all[row_all][0] = float(list[0])
-            gt_all[row_all][1] = float(list[1])
-            # 然后方阵A的下一行接着读
-            row_all = row_all + 1
 
         # gt.sort(key=takeSecond)
         # print("file", imgPath)
 
         H, W = 192, 192
 
-        # print(type(data))
         # 数据增强
         # data = self.randomBlur(data)
-        data = self.RandomBrightness(data)
-        data = self.RandomHue(data)
-        data = self.RandomSaturation(data)
-        # data = self.randomColor(data)
-        data = self.randomGaussian(data, mean=0.2, sigma=0.3)
+        # data = self.RandomBrightness(data)
+        # data = self.RandomHue(data)
+        # data = self.RandomSaturation(data)
+        # # data = self.randomColor(data)
+        # data = self.randomGaussian(data, mean=0.2, sigma=0.3)
+        if self.setname == 'train':
+            # data = self.randomBlur(data)
+            data = self.RandomBrightness(data)
+            data = self.RandomHue(data)
+            data = self.RandomSaturation(data)
+            # data = self.randomColor(data)
+            data = self.randomGaussian(data, mean=0.2, sigma=0.3)
+
         data = 255 * np.array(data).astype('uint8')
         data = cv2.cvtColor(np.array(data), cv2.COLOR_RGB2BGR)  # PIL转cv2
+
+        # data = self.random_rotate(data)
 
         if self.rgb2gray:
             t = torchvision.transforms.Grayscale(1)
@@ -221,13 +213,14 @@ class heatmap_dataset(Dataset):
         r = 0
         # print(r)
         trans = self.get_affine_transform(c, s, r, size)
-        # data = cv2.warpAffine(
-        #     data, trans, (size[0], size[1]), flags=cv2.INTER_LINEAR)
+        data = cv2.warpAffine(
+            data, trans, (size[0], size[1]), flags=cv2.INTER_LINEAR)
         mask = cv2.warpAffine(
             mask, trans, (size[0], size[1]), flags=cv2.INTER_LINEAR, borderValue=255)
 
         # Expand dims into Pytorch format
         data = np.transpose(data, (2, 0, 1))
+        mask = np.expand_dims(mask, 0)
 
         # Convert to Pytorch Tensors
         data = torch.tensor(data, dtype=torch.float)
@@ -237,7 +230,7 @@ class heatmap_dataset(Dataset):
 
         return data, gt, mask, item, imgPath, heatmaps
 
-    def randomColor(image):
+    def randomColor(self, image):
         """
         对图像进行颜色抖动
         :param image: PIL的图像image
@@ -332,12 +325,12 @@ class heatmap_dataset(Dataset):
                 after_shfit_image[int(shift_y):, int(
                     shift_x):, :] = bgr[:height-int(shift_y), :width-int(shift_x), :]
             elif shift_x >= 0 and shift_y < 0:
-                after_shfit_image[:height+int(shift_y), int(shift_x)                                  :, :] = bgr[-int(shift_y):, :width-int(shift_x), :]
+                after_shfit_image[:height+int(shift_y), int(shift_x):, :] = bgr[-int(shift_y):, : width-int(shift_x), :]
             elif shift_x < 0 and shift_y >= 0:
-                after_shfit_image[int(shift_y):, :width+int(shift_x),
-                                  :] = bgr[:height-int(shift_y), -int(shift_x):, :]
+                after_shfit_image[int(shift_y):, : width+int(shift_x),
+                                  :] = bgr[: height-int(shift_y), -int(shift_x):, :]
             elif shift_x < 0 and shift_y < 0:
-                after_shfit_image[:height+int(shift_y), :width+int(
+                after_shfit_image[: height+int(shift_y), : width+int(
                     shift_x), :] = bgr[-int(shift_y):, -int(shift_x):, :]
 
             shift_xy = torch.FloatTensor(
@@ -459,11 +452,51 @@ class heatmap_dataset(Dataset):
             heatmaps_this_img.append(heatmap)
         # (num_joint,crop_size_y/stride,crop_size_x/stride)
         heatmaps_this_img = np.concatenate(heatmaps_this_img, axis=0)
-
-        # height, width = heatmaps_this_img.shape[:2]
-        # for y in range(height):
-        #     for x in range(width):
-        #         maximum = max(heatmap[y][x])
-        #         heatmap[y][x][-1] = max(1.0 - maximum, 0.0)
-
         return heatmaps_this_img
+
+    def random_rotate(self, image, angle=5.):
+        angle = np.random.uniform(-angle, angle)
+
+        h, w, _ = image.shape
+        m = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1)
+        image = cv2.warpAffine(
+            image, m, (w, h), borderMode=cv2.BORDER_REFLECT101)
+
+        return image
+
+    def random_distort(self, image, hue, saturation, exposure):
+        # determine scale factors
+        dhue = np.random.uniform(-hue, hue)
+        dsat = np.random.uniform(1. / saturation, saturation)
+        dexp = np.random.uniform(1. / exposure, exposure)
+
+        image = 255 * np.array(image).astype('uint8')
+        # convert RGB space to HSV space
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV).astype('float')
+
+        # change satuation and exposure
+        image[:, :, 1] *= dsat
+        image[:, :, 2] *= dexp
+
+        # change hue
+        image[:, :, 0] += dhue
+
+        image[:, :, 0] = np.clip(image[:, :, 0], 0., 179.)
+        image[:, :, 1] = np.clip(image[:, :, 1], 0., 255.)
+        image[:, :, 2] = np.clip(image[:, :, 2], 0., 255.)
+
+        # convert back to RGB from HSV
+        return cv2.cvtColor(image.astype('uint8'), cv2.COLOR_HSV2RGB)
+
+    def random_add_smu(self, image):
+        _smu = cv2.imread(
+            '/media/home_bak/ziqi/park/Hourglass_nocrop/noise/smu.jpg')
+        if random.randint(0, 1):
+            rows = random.randint(0, _smu.shape[0] - image.shape[0])
+            cols = random.randint(0, _smu.shape[1] - image.shape[1])
+            add_smu = _smu[rows:rows + image.shape[0],
+                           cols:cols + image.shape[1]]
+            image = cv2.bitwise_not(image)
+            image = cv2.bitwise_and(add_smu, image)
+            image = cv2.bitwise_not(image)
+        return image

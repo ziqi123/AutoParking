@@ -4,6 +4,10 @@
 
 # Datasets
 Ps_locate_dataset/
+*.jpg
+*.txt
+*.ckpt
+*.out
 
 # Model checkpoints and logs
 checkpoints/
