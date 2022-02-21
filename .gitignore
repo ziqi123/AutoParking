@@ -8,6 +8,8 @@ Ps_locate_dataset/
 *.txt
 *.ckpt
 *.out
+*.png
+nohup*
 
 # Model checkpoints and logs
 checkpoints/

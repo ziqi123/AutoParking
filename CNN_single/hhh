@@ -1,0 +1,6 @@
+0.0001
+start
+Traceback (most recent call last):
+  File "eval_heatmap.py", line 143, in <module>
+    tmp = get_acc(imgPath[s], all_peak_points[s], gt[s], p, save_img)
+TypeError: get_acc() takes 4 positional arguments but 5 were given
