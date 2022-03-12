@@ -1,0 +1,81 @@
+{
+    "system": {
+        "dataset": "PSLOT",
+        "batch_size": 16,
+        "sampling_function": "kp_detection",
+        "train_split": "train",
+        "val_split": "test",
+        "demo_split": "demo",
+        "learning_rate": 0.0001,
+        "decay_rate": 10,
+        "val_iter": 500,
+        "infer_iter": 1000,
+        "opt_algo": "adamW",
+        "prefetch_size": 5,
+        "display": 500,
+        "max_iter": 300000,
+        "stepsize": 100000,
+        "snapshot": 10000,
+        "chunk_sizes": [
+            16
+        ],
+        "data_dir": "../../PLD_dataset_v3",
+        "cache_dir": "../model_ckpt",
+        "result_dir": "../results_ckpt",
+        "pretrain": "resnet18-5c106cde.pth",
+        "test_data_dir": "../test_dataset_v1",
+        "test_data_show": "../test_data_show",
+        "test_ckpt": 280000,
+        "test_threshold": 0.95,
+        "threshold_pck": 5
+    },
+    "net_params": {
+        "layers": [
+            2,
+            2,
+            2,
+            2
+        ],
+        "res_dims": [
+            64,
+            128,
+            256,
+            512
+        ],
+        "res_strides": [
+            1,
+            2,
+            2,
+            2
+        ],
+        "attn_dim": 128,
+        "dim_feedforward": 512,
+        "num_queries": 50,
+        "drop_out": 0.1,
+        "num_heads": 4,
+        "enc_layers": 2,
+        "dec_layers": 2,
+        "kps_dim": 10,
+        "cls_dim": 3,
+        "mlp_layers": 3,
+        "aux_loss": true,
+        "pos_type": "sine",
+        "pre_norm": false,
+        "return_intermediate": true
+    },
+    "db": {
+        "roi_size": [
+            384,
+            384
+        ],
+        "num_roi": 1,
+        "detbox_path": ""
+    },
+    "demo": {
+        "demo_dir": "/media/home_bak/ziqi/park/PSTR/PLD_BirdView/20210107142503-00-00.MP4",
+        "threshold": 0.985,
+        "tmp": "../tmp_show1/20210107142503-00-00.MP4",
+        "video_dir": "debug1.avi",
+        "annt_result_dir": "/media/home_bak/ziqi/park/PSTR/PLD_BirdView/annt_20210107142503-00-00.MP4"
+    }
+}

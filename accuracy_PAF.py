@@ -88,8 +88,16 @@ def colorize_pic(src_img_1024_path, point_pred_256_path,
     p = np.asarray(p)
 
     for i in range(4):
-        cv2.circle(img_pred, (int(p[i][0]), int(p[i][1])),
-                   point_size, point_color2, thickness)
+        if i < 3:
+            img_pred = cv2.line(img_pred, (int(p[i][0]), int(p[i][1])),
+                                (int(p[i+1][0]), int(p[i+1][1])), (0, 0, 255), 3, 8)
+        else:
+            img_pred = cv2.line(img_pred, (int(p[i][0]), int(p[i][1])),
+                                (int(p[0][0]), int(p[0][1])), (0, 0, 255), 3, 8)
+
+    # for i in range(4):
+    #     cv2.circle(img_pred, (int(p[i][0]), int(p[i][1])),
+    #                point_size, point_color2, thickness)
 
     # gt
     # annt = np.loadtxt(point_gt_1024_path)
@@ -100,9 +108,9 @@ def colorize_pic(src_img_1024_path, point_pred_256_path,
     # dst = dst.reshape(2, 2)
     dst = np.asarray(dst)
 
-    for i in range(4):
-        cv2.circle(img_pred, (int(dst[i][0]), int(dst[i][1])),
-                   point_size, point_color, thickness)
+    # for i in range(4):
+    #     cv2.circle(img_pred, (int(dst[i][0]), int(dst[i][1])),
+    #                point_size, point_color, thickness)
 
     cv2.imwrite(mark_img_1024_path, img_pred)
 
@@ -143,20 +151,6 @@ def get_accuracy(pix):
 
 # 计算两点与原点的夹角
 
-
-# def angle_between(p1, p2):
-#     ang1 = np.arctan2(*p1[::-1])
-#     ang2 = np.arctan2(*p2[::-1])
-#     return np.rad2deg((ang1 - ang2) % (2 * np.pi))
-
-# def azimuthAngle(x1,  y1,  x2,  y2):
-
-#     dx = abs(x2 - x1)
-#     dy = abs(y2 - y1)
-#     angle = math.atan2(dy , dx)
-
-#     return (angle * 180 / math.pi)
-
 def azimuthAngle(x1,  y1,  x2,  y2):
     angle = math.atan2((y2-y1), (x2-x1))
     return (angle * 180 / math.pi)
@@ -173,7 +167,7 @@ def get_angle_acc(point_pred_1024_path, point_1024_gt_path, pix):
         vec[w] = np.array([point_pred[w][0],
                            point_pred[w][1]])
         vec_gt[w] = np.array([point_gt[w][0],
-                             point_gt[w][1]])
+                              point_gt[w][1]])
 
     vector1 = vec[2]-vec[0]
     vector2 = vec[3]-vec[1]
@@ -192,14 +186,9 @@ def get_angle_acc(point_pred_1024_path, point_1024_gt_path, pix):
     angle1 = azimuthAngle(vec[0][0], vec[0][1],
                           vector_end1[0],  vector_end1[1])
 
-    # angle_between(vec[0], vector_end1)
-
-    # angle1_gt = angle_between(vec_gt[0], vector_end1_gt)
     angle1_gt = azimuthAngle(vec_gt[0][0], vec_gt[0][1],
                              vector_end1_gt[0],  vector_end1_gt[1])
 
-    # angle2 = angle_between(vec[1], vector_end2)
-    # angle2_gt = angle_between(vec_gt[1], vector_end2_gt)
     angle2 = azimuthAngle(vec[1][0], vec[1][1],
                           vector_end2[0],  vector_end2[1])
     angle2_gt = azimuthAngle(vec_gt[1][0], vec_gt[1][1],
@@ -250,18 +239,18 @@ if __name__ == "__main__":
     # 测试数据集的准确度
     #   ************************************************************************************************************************
 
-    trans_inv_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/trans_256To1024"
-    src_img_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/img_1024_with_rectangle"
-    # annt_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/annt_1024_singleSlot"
-    mark_img_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/fina"
+    # trans_inv_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/trans_256To1024"
+    # src_img_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/img_1024_with_rectangle"
+    # # annt_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/annt_1024_singleSlot"
+    # mark_img_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/fina"
 
-    point_256_gt_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/annt_256"
-    point_pred_256_dir = "/media/home_bak/ziqi/park/stackedHourglass_256/point_pred_256"
-    mark_test_img_256_dir = "/media/home_bak/ziqi/park/stackedHourglass_256/mark_test_img_256"
+    # point_256_gt_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/annt_256"
+    # point_pred_256_dir = "/media/home_bak/ziqi/park/stackedHourglass_256/point_pred_256"
+    # mark_test_img_256_dir = "/media/home_bak/ziqi/park/stackedHourglass_256/mark_test_img_256"
 
-    error_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/error_img"
-    point_pred_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/point_pred_1024"
-    point_gt_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/annt_1024_singleSlot"
+    # error_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/error_img"
+    # point_pred_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/point_pred_1024"
+    # point_gt_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_Training_TestSet_v1.0.7_All_3342/annt_1024_singleSlot"
 
     # 训练数据集的准确度
     #   ************************************************************************************************************************
@@ -279,51 +268,120 @@ if __name__ == "__main__":
     # point_pred_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_TrainingDaraSet_All/point_pred_1024"
     # point_gt_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_TrainingDaraSet_All/annt_1024_singleSlot"
 
-    for i in os.listdir(mark_test_img_256_dir):
-        point_pred_256_path = os.path.join(
-            point_pred_256_dir, i.strip('.jpg')+'.txt')
-        src_img_1024_path = os.path.join(src_img_1024_dir, i)
-        trans_inv_path = os.path.join(trans_inv_dir, i.strip('.jpg')+'.txt')
-        mark_img_1024_path = os.path.join(mark_img_1024_dir, i)
-        point_256_gt_path = os.path.join(
-            point_256_gt_dir, i.strip('.jpg')+'_OA.txt')
-        point_pred_1024_path = os.path.join(
-            point_pred_1024_dir, i.strip('.jpg')+'.txt')
-        point_gt_1024_path = os.path.join(
-            point_gt_1024_dir, i.strip('.jpg')+'.txt')
+    # for i in os.listdir(mark_test_img_256_dir):
+    #     point_pred_256_path = os.path.join(
+    #         point_pred_256_dir, i.strip('.jpg')+'.txt')
+    #     src_img_1024_path = os.path.join(src_img_1024_dir, i)
+    #     trans_inv_path = os.path.join(trans_inv_dir, i.strip('.jpg')+'.txt')
+    #     mark_img_1024_path = os.path.join(mark_img_1024_dir, i)
+    #     point_256_gt_path = os.path.join(
+    #         point_256_gt_dir, i.strip('.jpg')+'_OA.txt')
+    #     point_pred_1024_path = os.path.join(
+    #         point_pred_1024_dir, i.strip('.jpg')+'.txt')
+    #     point_gt_1024_path = os.path.join(
+    #         point_gt_1024_dir, i.strip('.jpg')+'.txt')
 
-        colorize_pic(src_img_1024_path, point_pred_256_path,
-                     trans_inv_path, mark_img_1024_path, point_256_gt_path, point_pred_1024_path, point_gt_1024_path)
-        draw_angle(mark_img_1024_path, point_pred_1024_path)
+    #     colorize_pic(src_img_1024_path, point_pred_256_path,
+    #              trans_inv_path, mark_img_1024_path, point_256_gt_path, point_pred_1024_path, point_gt_1024_path)
+    # draw_angle(mark_img_1024_path, point_pred_1024_path)
+    # acc = []
+    # accuracy_angle = [0 for j in range(10)]
+    # for k in range(15):
+    #     x1 = get_accuracy(k)
+    #     x1 = 100 * x1 / 6313
+    #     x1 = round(x1, 3)
+    #     acc.append(x1)
 
-    acc = []
-    accuracy_angle = [0 for j in range(10)]
-    for k in range(15):
-        x1 = get_accuracy(k)
-        x1 = 100 * x1 / 6313
-        x1 = round(x1, 3)
-        acc.append(x1)
-
-    print("acc", acc)
+    # print("acc", acc)
 
     # 计算1024*1024图片上角度的精度
-    for pix in range(10):
-        for c in os.listdir(mark_test_img_256_dir):
-            point_pred_1024_path = os.path.join(
-                point_pred_1024_dir, c.strip('.jpg')+'.txt')
-            point_gt_1024_path = os.path.join(
-                point_gt_1024_dir, c.strip('.jpg')+'.txt')
-            tmp = get_angle_acc(point_pred_1024_path, point_gt_1024_path, pix)
-            accuracy_angle[pix] += tmp
+    # for pix in range(10):
+    #     for c in os.listdir(mark_test_img_256_dir):
+    #         point_pred_1024_path = os.path.join(
+    #             point_pred_1024_dir, c.strip('.jpg')+'.txt')
+    #         point_gt_1024_path = os.path.join(
+    #             point_gt_1024_dir, c.strip('.jpg')+'.txt')
+    #         tmp = get_angle_acc(point_pred_1024_path, point_gt_1024_path, pix)
+    #         accuracy_angle[pix] += tmp
 
-    for y in range(10):
-        accuracy_angle[y] = 100 * accuracy_angle[y] / 6313
-        accuracy_angle[y] = round(accuracy_angle[y], 3)
+    # for y in range(10):
+    #     accuracy_angle[y] = 100 * accuracy_angle[y] / 6313
+    #     accuracy_angle[y] = round(accuracy_angle[y], 3)
 
-    print("accuracy_angle:", accuracy_angle)
+    # print("accuracy_angle:", accuracy_angle)
 
     # x1 = round(x1, 3)
     # print(acc)
+
+    # 测试视频的准确度
+    #   ************************************************************************************************************************
+
+    trans_inv_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_20201219152720-00-00/trans_256To1024"
+    src_img_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_20201219152720-00-00/img_1024_with_rectangle"
+    mark_img_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_20201219152720-00-00/fina"
+
+    point_256_gt_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_20201219152720-00-00/annt_256"
+    point_pred_256_dir = "/media/home_bak/ziqi/park/stackedHourglass_256/PLD_BirdView_20201219152720-00-00/point_pred_256"
+    mark_test_img_256_dir = "/media/home_bak/ziqi/park/stackedHourglass_256/PLD_BirdView_20201219152720-00-00/mark_test_img_256"
+
+    point_pred_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_20201219152720-00-00/point_pred_1024"
+    point_gt_1024_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_20201219152720-00-00/annt_1024_singleSlot"
+    video_img_dir = "/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_20201219152720-00-00/20201219152720-00-00.MP4"
+
+    # for i in os.listdir(mark_test_img_256_dir):
+    #     point_pred_256_path = os.path.join(
+    #         point_pred_256_dir, i.strip('.jpg')+'.txt')
+    #     src_img_1024_path = os.path.join(src_img_1024_dir, i)
+    #     trans_inv_path = os.path.join(trans_inv_dir, i.strip('.jpg')+'.txt')
+    #     mark_img_1024_path = os.path.join(mark_img_1024_dir, i)
+    #     point_256_gt_path = os.path.join(
+    #         point_256_gt_dir, i.strip('.jpg')+'_OA.txt')
+    #     point_pred_1024_path = os.path.join(
+    #         point_pred_1024_dir, i.strip('.jpg')+'.txt')
+    #     point_gt_1024_path = os.path.join(
+    #         point_gt_1024_dir, i.strip('.jpg')+'.txt')
+    #     colorize_pic(src_img_1024_path, point_pred_256_path,
+    #                  trans_inv_path, mark_img_1024_path, point_256_gt_path, point_pred_1024_path, point_gt_1024_path)
+
+    # for j in sorted(os.listdir(point_pred_1024_dir)):
+    #     tmp = j
+    #     pred_point = tmp.split('_')
+    #     pred = pred_point[0]+'_'+pred_point[1]
+    #     # print(pred)
+    #     video_img_path = os.path.join(video_img_dir, pred+'.jpg')
+    #     # print(video_img_path)
+    #     img_pred = cv2.imread(video_img_path)
+    #     point_pred_1024_path = os.path.join(point_pred_1024_dir, j)
+    #     point = np.loadtxt(point_pred_1024_path)
+    #     for k in range(4):
+    #         if k < 3:
+    #             video_img = cv2.line(img_pred, (int(point[k][0]), int(point[k][1])),
+    #                                  (int(point[k+1][0]), int(point[k+1][1])), (0, 0, 255), 3, 8)
+    #         else:
+    #             video_img = cv2.line(img_pred, (int(point[k][0]), int(point[k][1])),
+    #                                  (int(point[0][0]), int(point[0][1])), (0, 0, 255), 3, 8)
+    #         cv2.imwrite(video_img_path, video_img)
+
+    # output video path
+    video_dir = '/media/home_bak/ziqi/park/Ps_locate_dataset/PLD_BirdView_20201219152720-00-00/demo'
+    if not os.path.exists(video_dir):
+        os.makedirs(video_dir)
+    # set saved fps
+    fps = 30
+    img_size = (1024, 1024)
+    # get seq name
+    seq_name = os.path.dirname(video_img_dir).split('_')[-1]
+    # splice video_dir
+    video_dir = os.path.join(video_dir, seq_name + '.avi')
+    fourcc = cv2.VideoWriter_fourcc('I', '4', '2', '0')
+    videowriter = cv2.VideoWriter(video_dir, fourcc, fps, img_size)
+
+    for img in range(801,len(os.listdir(video_img_dir))):
+        img = '{}_{}.jpg'.format(video_img_dir.split('/')[-1], img)
+        img1 = cv2.imread(os.path.join(video_img_dir, img))
+        videowriter.write(img1)
+
+    videowriter.release()
 
     # # 设置画布大小
     # plt.figure(figsize=(30, 15))
