@@ -52,17 +52,29 @@ class PSLOT(DETECTION):
         self.detbox_path = db_config["detbox_path"]
 
         self._split = split
+        # self._labelset = {
+        #     "train": "annt_1024",
+        #     "test": "annt_1024",
+        #     "demo": "annt_1024"
+
+        # }[self._split]
         self._labelset = {
-            "train": "annt_1024",
-            "test": "annt_1024",
-            "demo": "annt_1024"
+            "train": "train/annotation",
+            "test": "val/annotation",
+            "demo": "val/annotation"
 
         }[self._split]
         self._imageset = {
-            "train": "img_1024",
-            "test": "img_1024",
-            "demo": "img_1024"
+            "train": "train/pic",
+            "test": "val/pic",
+            "demo": "val/pic"
         }[self._split]
+
+        # self._imageset = {
+        #     "train": "img_1024",
+        #     "test": "img_1024",
+        #     "demo": "img_1024"
+        # }[self._split]
         self._cachefile = {
             "train": "train",
             "test": "val",

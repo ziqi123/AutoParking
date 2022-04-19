@@ -11,7 +11,7 @@ from .position_encoding import build_position_encoding
 from .transformer import build_transformer
 from .detr_loss import SetCriterion
 from .utils import NestedTensor, nested_tensor_from_tensor_list, MLP
-
+from scipy.optimize import linear_sum_assignment
 BN_MOMENTUM = 0.1
 
 
@@ -93,8 +93,8 @@ class kp(nn.Module):
                  mlp_layers=None,
                  norm_layer=FrozenBatchNorm2d,
                  level=["layer1", "layer2", "layer3", "layer4"],
-                 x_res=10,
-                 y_res=10):
+                 x_res=50,
+                 y_res=50):
 
         super(kp, self).__init__()
         self.flag = flag
@@ -143,6 +143,7 @@ class kp(nn.Module):
                                              pre_norm=pre_norm,
                                              return_intermediate_dec=return_intermediate)
         self.class_embed = nn.Linear(hidden_dim, cls_dim)  # 9 subclasses
+        self.class_embed2 = nn.Linear(hidden_dim, 6)  # 9 subclasses
         self.joints_embed = MLP(hidden_dim, hidden_dim,
                                 kps_dim, mlp_layers)  # 5 keypoints 5 * 2
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
@@ -434,6 +435,7 @@ class kp(nn.Module):
         x3 = x3.clamp(0, 1)
         x4 = x4.clamp(0, 1)
         x5 = x5.clamp(0, 1)
+
         # print('x1', x1.shape)
         # [800, 50]
         y1 = y1.clamp(0, 1)
@@ -453,9 +455,10 @@ class kp(nn.Module):
             hs.size(0), -1, 10)
         j_class = j_class.reshape(hs.size(
             0), -1, 3)
+
         # print('j_coord', j_coord.shape, j_class.shape)
-        # [16, 2500, 8]
-        # [16, 2500, 3]
+        # torch.Size([16, 50, 50, 2])
+        # torch.Size([16, 50, 50, 6])
 
         out['pred_boxes'] = j_coord
         out['pred_classes'] = j_class
@@ -802,10 +805,21 @@ class AELoss(nn.Module):
                     gt_viz_inputs = gt_viz_inputs.view(-1, c, roi_h, roi_w)
                     pred_joints = roi_h * outputs['pred_boxes'].detach()
                     pred_classes = outputs['pred_classes']
-                    pred = self.Softmax(pred_classes)
-                    mask = pred[:, :, 1] > pred[:, :, 0]
-                    pred_pslots = [joi[mas]
-                                   for joi, mas in zip(pred_joints, mask)]
+                    # pred = self.Softmax(pred_classes)
+                    # mask = pred[:, :, 1] > pred[:, :, 0]
+                    # pred_pslots = [joi[mas]
+                    #                for joi, mas in zip(pred_joints, mask)]
+
+                    C_stacked = pred_classes.transpose(
+                        1, 2).detach().cpu().numpy()
+                    coord_holder = []
+                    for b, C in enumerate(C_stacked):
+                        _, query_ind = linear_sum_assignment(-C)
+                        coord_holder.append(pred_joints[b, query_ind.tolist()])
+                    pred_pslots = torch.stack(coord_holder, dim=0).reshape(
+                        pred_joints.size(0), -1, 10)
+
+                    # torch.Size([16, 50, 5, 2])
                     viz_tgt_joints = [
                         i.detach()*roi_h for i in targets[1:raw_batch+1]]
                     ign_joints = [
